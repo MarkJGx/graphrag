@@ -5,8 +5,8 @@
 
 import asyncio
 import json
-import re
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -54,6 +54,7 @@ class GlobalSearchResult(SearchResult):
     map_responses: list[SearchResult]
     reduce_context_data: str | list[pd.DataFrame] | dict[str, pd.DataFrame]
     reduce_context_text: str | list[str] | dict[str, str]
+
 
 class GlobalSearch(BaseSearch):
     """Search orchestration for global search mode."""
@@ -216,7 +217,6 @@ class GlobalSearch(BaseSearch):
                 prompt_tokens=num_tokens(search_prompt, self.token_encoder),
             )
 
-
     def parse_search_response(self, search_response: str) -> list[dict[str, Any]]:
         """Parse the search response json and return a list of key points.
 
@@ -236,19 +236,18 @@ class GlobalSearch(BaseSearch):
             If the response cannot be parsed as JSON or doesn't contain the expected structure
         """
         # Try to extract JSON from the response if it's embedded in text
-        json_match = re.search(r'\{.*\}', search_response, re.DOTALL)
-        if json_match:
-            json_str = json_match.group()
-        else:
-            json_str = search_response
+        json_match = re.search(r"\{.*\}", search_response, re.DOTALL)
+        json_str = json_match.group() if json_match else search_response
 
         try:
             parsed_data = json.loads(json_str)
-        except json.JSONDecodeError:
-            raise ValueError("Failed to parse response as JSON")
+        except json.JSONDecodeError as err:
+            error_msg = "Failed to parse response as JSON"
+            raise ValueError(error_msg) from err
 
-        if 'points' not in parsed_data or not isinstance(parsed_data['points'], list):
-            raise ValueError("Response JSON does not contain a 'points' list")
+        if "points" not in parsed_data or not isinstance(parsed_data["points"], list):
+            error_msg = "Response JSON does not contain a 'points' list"
+            raise ValueError(error_msg)
 
         try:
             return [
@@ -259,8 +258,8 @@ class GlobalSearch(BaseSearch):
                 for element in parsed_data["points"]
             ]
         except (KeyError, ValueError) as e:
-            raise ValueError(f"Error processing points: {str(e)}")
-
+            error_msg = f"Error processing points: {e!s}"
+            raise ValueError(error_msg) from e
 
     async def _reduce_response(
         self,
@@ -310,7 +309,7 @@ class GlobalSearch(BaseSearch):
             filtered_key_points = sorted(
                 filtered_key_points,
                 key=lambda x: x["score"],  # type: ignore
-                reverse=True, # type: ignore
+                reverse=True,  # type: ignore
             )
 
             data = []
