@@ -5,9 +5,9 @@
 
 import asyncio
 import json
+import re
 import logging
 import time
-import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,12 +16,18 @@ import tiktoken
 
 from graphrag.index.utils.json import clean_up_json
 from graphrag.query.context_builder.builders import GlobalContextBuilder
-from graphrag.query.context_builder.conversation_history import ConversationHistory
+from graphrag.query.context_builder.conversation_history import (
+    ConversationHistory,
+)
 from graphrag.query.llm.base import BaseLLM
 from graphrag.query.llm.text_utils import num_tokens
 from graphrag.query.structured_search.base import BaseSearch, SearchResult
-from graphrag.query.structured_search.global_search.callbacks import GlobalSearchLLMCallback
-from graphrag.query.structured_search.global_search.map_system_prompt import MAP_SYSTEM_PROMPT
+from graphrag.query.structured_search.global_search.callbacks import (
+    GlobalSearchLLMCallback,
+)
+from graphrag.query.structured_search.global_search.map_system_prompt import (
+    MAP_SYSTEM_PROMPT,
+)
 from graphrag.query.structured_search.global_search.reduce_system_prompt import (
     GENERAL_KNOWLEDGE_INSTRUCTION,
     NO_DATA_ANSWER,
@@ -39,6 +45,7 @@ DEFAULT_REDUCE_LLM_PARAMS = {
 }
 
 log = logging.getLogger(__name__)
+
 
 @dataclass
 class GlobalSearchResult(SearchResult):
@@ -88,6 +95,7 @@ class GlobalSearch(BaseSearch):
         if json_mode:
             self.map_llm_params["response_format"] = {"type": "json_object"}
         else:
+            # remove response_format key if json_mode is False
             self.map_llm_params.pop("response_format", None)
 
         self.semaphore = asyncio.Semaphore(concurrent_coroutines)
@@ -114,7 +122,7 @@ class GlobalSearch(BaseSearch):
 
         if self.callbacks:
             for callback in self.callbacks:
-                callback.on_map_response_start(context_chunks) # type: ignore
+                callback.on_map_response_start(context_chunks)  # type: ignore
         map_responses = await asyncio.gather(*[
             self._map_response_single_batch(
                 context_data=data, query=query, **self.map_llm_params
